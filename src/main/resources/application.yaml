@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: springaichat
+
+  config:
+    import: optional:file:.env.${spring.profiles.active}[.properties]
+
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+    open-in-view: false
+
+  ai:
+    openai:
+      api-key: ${NVIDIA_API_KEY}
+      base-url: https://integrate.api.nvidia.com/v1
+      chat:
+        options:
+          model: ${NVIDIA_CHAT_MODEL:nvidia/nemotron-3-ultra-550b-a55b}
+          max-tokens: 2048
+      embedding:
+        enabled: false

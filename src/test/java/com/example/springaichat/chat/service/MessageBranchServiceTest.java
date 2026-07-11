@@ -1,6 +1,8 @@
 package com.example.springaichat.chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 import com.example.springaichat.chat.entity.ChatRoom;
@@ -20,57 +22,34 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MessageBranchServiceTest {
 
-	private static final String CHAT_ROOM_ID = "chat-room-id";
+    private static final String CHAT_ROOM_ID = "chat-room-id";
 
-	@Mock
-	private ChatRoomRepository chatRoomRepository;
+    @Mock
+    private ChatRoomRepository chatRoomRepository;
 
-	@Mock
-	private MessageRepository messageRepository;
+    @Mock
+    private MessageRepository messageRepository;
 
-	@InjectMocks
-	private MessageBranchService messageBranchService;
+    @InjectMocks
+    private MessageBranchService messageBranchService;
 
-	@Test
-	@DisplayName("getAncestorChain은 조상이 많아도 최근 MEMORY_WINDOW_SIZE(20)개까지만 walk한다")
-	void getAncestorChain_boundedToMemoryWindowSize() {
-		ChatRoom chatRoom = ChatRoom.builder().id(CHAT_ROOM_ID).build();
-		Message leaf = buildChain(chatRoom, 25);
-		given(messageRepository.findById(leaf.getId())).willReturn(Optional.of(leaf));
+    @Test
+    @DisplayName("getAncestorChain은 소속을 검증한 뒤 리포지토리 결과(리프가 먼저)를 시간순으로 뒤집어 반환한다")
+    void getAncestorChain_validatesAndReversesRepositoryResult() {
+        ChatRoom chatRoom = ChatRoom.builder().id(CHAT_ROOM_ID).build();
+        Message leaf = Message.builder().id("msg-2").chatRoom(chatRoom).role(MessageRole.USER).content("메시지-2")
+            .build();
+        given(messageRepository.findById("msg-2")).willReturn(Optional.of(leaf));
 
-		List<Message> result = messageBranchService.getAncestorChain(CHAT_ROOM_ID, leaf.getId());
+        Message repoLeaf = Message.builder().id("msg-2").role(MessageRole.USER).content("메시지-2").build();
+        Message repoParent = Message.builder().id("msg-1").role(MessageRole.ASSISTANT).content("메시지-1").build();
+        Message repoRoot = Message.builder().id("msg-0").role(MessageRole.USER).content("메시지-0").build();
+        given(messageRepository.findAncestorChain(eq("msg-2"), anyInt()))
+            .willReturn(List.of(repoLeaf, repoParent, repoRoot));
 
-		assertThat(result).hasSize(20);
-		assertThat(result.get(0).getContent()).isEqualTo("메시지-5");
-		assertThat(result.get(19).getContent()).isEqualTo("메시지-24");
-	}
+        List<Message> result = messageBranchService.getAncestorChain(CHAT_ROOM_ID, "msg-2");
 
-	@Test
-	@DisplayName("getAncestorChain은 조상 수가 창 크기보다 짧으면 전부 반환한다")
-	void getAncestorChain_shorterThanWindow_returnsAll() {
-		ChatRoom chatRoom = ChatRoom.builder().id(CHAT_ROOM_ID).build();
-		Message leaf = buildChain(chatRoom, 3);
-		given(messageRepository.findById(leaf.getId())).willReturn(Optional.of(leaf));
-
-		List<Message> result = messageBranchService.getAncestorChain(CHAT_ROOM_ID, leaf.getId());
-
-		assertThat(result).hasSize(3);
-		assertThat(result.get(0).getContent()).isEqualTo("메시지-0");
-		assertThat(result.get(2).getContent()).isEqualTo("메시지-2");
-	}
-
-	private Message buildChain(ChatRoom chatRoom, int length) {
-		Message current = null;
-		for (int i = 0; i < length; i++) {
-			current = Message.builder()
-					.id("msg-" + i)
-					.chatRoom(chatRoom)
-					.role(MessageRole.USER)
-					.content("메시지-" + i)
-					.parentMessage(current)
-					.build();
-		}
-		return current;
-	}
+        assertThat(result).extracting(Message::getId).containsExactly("msg-0", "msg-1", "msg-2");
+    }
 
 }

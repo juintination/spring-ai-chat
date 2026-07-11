@@ -3,6 +3,7 @@ package com.example.springaichat.chat.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.springaichat.chat.dto.request.CreateChatRoomRequest;
+import com.example.springaichat.chat.dto.request.SwitchBranchRequest;
 import com.example.springaichat.chat.entity.ChatRoom;
 import com.example.springaichat.chat.entity.Message;
 import com.example.springaichat.chat.entity.MessageRole;
@@ -85,7 +86,7 @@ class ChatRoomControllerTest {
 	}
 
 	@Test
-	@DisplayName("채팅방의 메시지 목록을 등록 순서대로 조회한다")
+	@DisplayName("채팅방의 활성 경로 메시지 목록을 등록 순서대로 조회한다")
 	void getMessages() {
 		ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.builder().title("대화").build());
 		Message userMessage = messageRepository.save(Message.builder()
@@ -97,7 +98,10 @@ class ChatRoomControllerTest {
 				.chatRoom(chatRoom)
 				.role(MessageRole.ASSISTANT)
 				.content("안녕하세요")
+				.parentMessage(userMessage)
 				.build());
+		chatRoom.updateActiveLeafMessageId(assistantMessage.getId());
+		chatRoomRepository.save(chatRoom);
 
 		webTestClient.get().uri("/api/chat-rooms/{chatRoomId}/messages", chatRoom.getId())
 				.exchange()
@@ -107,6 +111,41 @@ class ChatRoomControllerTest {
 				.jsonPath("$.data[0].id").isEqualTo(userMessage.getId())
 				.jsonPath("$.data[0].content").isEqualTo("안녕")
 				.jsonPath("$.data[1].id").isEqualTo(assistantMessage.getId());
+	}
+
+	@Test
+	@DisplayName("형제 브랜치로 전환하면 활성 경로가 갱신된다")
+	void switchBranch() {
+		ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.builder().title("대화").build());
+		Message userMessage = messageRepository.save(Message.builder()
+				.chatRoom(chatRoom)
+				.role(MessageRole.USER)
+				.content("질문")
+				.build());
+		Message firstAnswer = messageRepository.save(Message.builder()
+				.chatRoom(chatRoom)
+				.role(MessageRole.ASSISTANT)
+				.content("첫 번째 답변")
+				.parentMessage(userMessage)
+				.build());
+		Message secondAnswer = messageRepository.save(Message.builder()
+				.chatRoom(chatRoom)
+				.role(MessageRole.ASSISTANT)
+				.content("두 번째 답변")
+				.parentMessage(userMessage)
+				.build());
+		chatRoom.updateActiveLeafMessageId(secondAnswer.getId());
+		chatRoomRepository.save(chatRoom);
+
+		webTestClient.post().uri("/api/chat-rooms/{chatRoomId}/active-branch", chatRoom.getId())
+				.bodyValue(new SwitchBranchRequest(firstAnswer.getId()))
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.data.length()").isEqualTo(2)
+				.jsonPath("$.data[1].id").isEqualTo(firstAnswer.getId())
+				.jsonPath("$.data[1].siblingIndex").isEqualTo(1)
+				.jsonPath("$.data[1].siblingCount").isEqualTo(2);
 	}
 
 	@Test

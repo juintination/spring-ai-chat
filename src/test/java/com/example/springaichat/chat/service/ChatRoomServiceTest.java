@@ -12,9 +12,10 @@ import com.example.springaichat.chat.dto.response.ChatRoomResponse;
 import com.example.springaichat.chat.dto.response.MessageResponse;
 import com.example.springaichat.chat.entity.ChatRoom;
 import com.example.springaichat.chat.entity.Message;
+import com.example.springaichat.chat.entity.MessageRole;
 import com.example.springaichat.chat.exception.ChatRoomNotFoundException;
 import com.example.springaichat.chat.repository.ChatRoomRepository;
-import com.example.springaichat.chat.repository.MessageRepository;
+import com.example.springaichat.chat.service.MessageBranchService.BranchNode;
 import com.navercorp.fixturemonkey.FixtureMonkey;
 import com.navercorp.fixturemonkey.api.introspector.BuilderArbitraryIntrospector;
 import java.util.List;
@@ -40,7 +41,7 @@ class ChatRoomServiceTest {
     private ChatRoomRepository chatRoomRepository;
 
     @Mock
-    private MessageRepository messageRepository;
+    private MessageBranchService messageBranchService;
 
     @InjectMocks
     private ChatRoomService chatRoomService;
@@ -75,17 +76,21 @@ class ChatRoomServiceTest {
     }
 
     @Test
-    @DisplayName("존재하는 채팅방의 메시지 목록을 조회한다")
+    @DisplayName("존재하는 채팅방의 활성 경로 메시지 목록을 조회한다")
     void getMessages() {
-        List<Message> messages = FIXTURE_MONKEY.giveMeBuilder(Message.class).sampleList(2);
+        Message first = Message.builder().id("msg-1").role(MessageRole.USER).content("질문").build();
+        Message second = Message.builder().id("msg-2").role(MessageRole.ASSISTANT).content("답변").build();
+        List<BranchNode> activePath = List.of(
+            new BranchNode(first, 1, 1, List.of("msg-1")),
+            new BranchNode(second, 1, 1, List.of("msg-2")));
         given(chatRoomRepository.existsById(CHAT_ROOM_ID)).willReturn(true);
-        given(messageRepository.findByChatRoomIdOrderByIdAsc(CHAT_ROOM_ID)).willReturn(messages);
+        given(messageBranchService.getActivePathWithSiblingInfo(CHAT_ROOM_ID)).willReturn(activePath);
 
         List<MessageResponse> responses = chatRoomService.getMessages(CHAT_ROOM_ID);
 
         assertThat(responses).hasSize(2)
             .extracting(MessageResponse::id)
-            .containsExactlyElementsOf(messages.stream().map(Message::getId).toList());
+            .containsExactly("msg-1", "msg-2");
     }
 
     @Test
@@ -95,6 +100,21 @@ class ChatRoomServiceTest {
 
         assertThatThrownBy(() -> chatRoomService.getMessages(CHAT_ROOM_ID))
             .isInstanceOf(ChatRoomNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("형제 브랜치로 전환하면 갱신된 활성 경로를 반환한다")
+    void switchBranch() {
+        Message switched = Message.builder().id("msg-2").role(MessageRole.ASSISTANT).content("다른 답변").build();
+        List<BranchNode> activePath = List.of(new BranchNode(switched, 2, 2, List.of("msg-1", "msg-2")));
+        given(chatRoomRepository.existsById(CHAT_ROOM_ID)).willReturn(true);
+        given(messageBranchService.getActivePathWithSiblingInfo(CHAT_ROOM_ID)).willReturn(activePath);
+
+        List<MessageResponse> responses = chatRoomService.switchBranch(CHAT_ROOM_ID, "msg-2");
+
+        verify(messageBranchService).switchBranch(CHAT_ROOM_ID, "msg-2");
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo("msg-2");
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.example.springaichat.chat.controller;
 
 import com.example.springaichat.chat.dto.request.CreateChatRoomRequest;
+import com.example.springaichat.chat.dto.request.SwitchBranchRequest;
 import com.example.springaichat.chat.dto.response.ChatRoomResponse;
 import com.example.springaichat.chat.dto.response.MessageResponse;
 import com.example.springaichat.chat.service.ChatRoomService;
@@ -40,6 +41,14 @@ public class ChatRoomController {
         @PathVariable String chatRoomId
     ) {
         return ApiResponse.success(chatRoomService.getMessages(chatRoomId));
+    }
+
+    @PostMapping("/{chatRoomId}/active-branch")
+    public ApiResponse<List<MessageResponse>> switchBranch(
+        @PathVariable String chatRoomId,
+        @Valid @RequestBody SwitchBranchRequest request
+    ) {
+        return ApiResponse.success(chatRoomService.switchBranch(chatRoomId, request.messageId()));
     }
 
     @DeleteMapping("/{chatRoomId}")

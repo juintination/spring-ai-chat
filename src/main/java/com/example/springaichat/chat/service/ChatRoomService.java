@@ -6,7 +6,6 @@ import com.example.springaichat.chat.dto.response.MessageResponse;
 import com.example.springaichat.chat.entity.ChatRoom;
 import com.example.springaichat.chat.exception.ChatRoomNotFoundException;
 import com.example.springaichat.chat.repository.ChatRoomRepository;
-import com.example.springaichat.chat.repository.MessageRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -19,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatRoomService {
 
 	private final ChatRoomRepository chatRoomRepository;
-	private final MessageRepository messageRepository;
+	private final MessageBranchService messageBranchService;
 
 	@Transactional
 	public ChatRoomResponse createChatRoom(CreateChatRoomRequest request) {
@@ -37,9 +36,16 @@ public class ChatRoomService {
 
 	public List<MessageResponse> getMessages(String chatRoomId) {
 		validateChatRoomExists(chatRoomId);
-		return messageRepository.findByChatRoomIdOrderByIdAsc(chatRoomId).stream()
+		return messageBranchService.getActivePathWithSiblingInfo(chatRoomId).stream()
 				.map(MessageResponse::from)
 				.toList();
+	}
+
+	@Transactional
+	public List<MessageResponse> switchBranch(String chatRoomId, String messageId) {
+		validateChatRoomExists(chatRoomId);
+		messageBranchService.switchBranch(chatRoomId, messageId);
+		return getMessages(chatRoomId);
 	}
 
 	@Transactional

@@ -3,10 +3,12 @@ package com.example.springaichat.chat.entity;
 import com.example.springaichat.common.entity.BaseEntity;
 import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -29,20 +31,32 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLRestriction("deleted_at is null")
 public class Message extends BaseEntity {
 
-	@Id
-	@Tsid
-	@Column(length = 13)
-	private String id;
+    @Id
+    @Tsid
+    @Column(length = 13)
+    private String id;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "chat_room_id", nullable = false)
-	private ChatRoom chatRoom;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chat_room_id", nullable = false)
+    private ChatRoom chatRoom;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private MessageRole role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MessageRole role;
 
-	@Column(nullable = false, columnDefinition = "TEXT")
-	private String content;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_message_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Message parentMessage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "active_child_message_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Message activeChildMessage;
+
+    public void updateActiveChildMessage(Message child) {
+        this.activeChildMessage = child;
+    }
 
 }

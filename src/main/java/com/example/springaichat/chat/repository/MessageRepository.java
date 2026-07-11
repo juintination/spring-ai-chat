@@ -13,4 +13,8 @@ public interface MessageRepository extends JpaRepository<Message, String> {
 
 	List<Message> findByChatRoomIdOrderByIdDesc(String chatRoomId, Pageable pageable);
 
+	List<Message> findByParentMessageId(String parentMessageId);
+
+	List<Message> findByChatRoomIdAndParentMessageIsNull(String chatRoomId);
+
 }

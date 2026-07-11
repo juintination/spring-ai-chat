@@ -24,16 +24,23 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLRestriction("deleted_at is null")
 public class ChatRoom extends BaseEntity {
 
-	@Id
-	@Tsid
-	@Column(length = 13)
-	private String id;
+    @Id
+    @Tsid
+    @Column(length = 13)
+    private String id;
 
-	@Column(nullable = false)
-	private String title;
+    @Column(nullable = false)
+    private String title;
 
-	public void updateTitle(String title) {
-		this.title = title;
-	}
+    @Column(name = "active_leaf_message_id", length = 13)
+    private String activeLeafMessageId;
+
+    public void updateTitle(String title) {
+        this.title = title;
+    }
+
+    public void updateActiveLeafMessageId(String messageId) {
+        this.activeLeafMessageId = messageId;
+    }
 
 }

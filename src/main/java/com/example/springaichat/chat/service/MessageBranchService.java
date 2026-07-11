@@ -77,12 +77,9 @@ public class MessageBranchService {
     }
 
     public List<Message> getAncestorChain(String chatRoomId, String messageId) {
-        List<Message> chain = new ArrayList<>();
-        Message current = getMessageInRoomOrThrow(chatRoomId, messageId);
-        while (current != null && chain.size() < MEMORY_WINDOW_SIZE) {
-            chain.add(current);
-            current = current.getParentMessage();
-        }
+        // 소속 검증은 여기서 한 번만 수행하고, 실제 조상 체인은 재귀 쿼리 한 번으로 가져온다
+        getMessageInRoomOrThrow(chatRoomId, messageId);
+        List<Message> chain = new ArrayList<>(messageRepository.findAncestorChain(messageId, MEMORY_WINDOW_SIZE));
         Collections.reverse(chain);
         return chain;
     }

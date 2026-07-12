@@ -14,6 +14,7 @@ import com.example.springaichat.chat.memory.PersistentChatMemory;
 import com.example.springaichat.chat.repository.ChatRoomRepository;
 import com.example.springaichat.chat.repository.MessageRepository;
 import com.example.springaichat.chat.service.MessageBranchService.BranchNode;
+import com.example.springaichat.chat.tool.DateTimeTools;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.log4j.Log4j2;
@@ -48,12 +49,13 @@ public class ChatService {
 
 	public ChatService(ChatClient.Builder chatClientBuilder, PersistentChatMemory chatMemory,
 			ChatRoomRepository chatRoomRepository, MessageRepository messageRepository,
-			MessageBranchService messageBranchService) {
-		// 제목 생성은 대화 메모리를 오염시키면 안 되므로 어드바이저 없는 클라이언트를 별도로 둔다
+			MessageBranchService messageBranchService, DateTimeTools dateTimeTools) {
+		// 제목 생성은 대화 메모리를 오염시키면 안 되므로 어드바이저 없는 클라이언트를 별도로 둔다 (Tool도 등록하지 않는다)
 		this.titleChatClient = chatClientBuilder.build();
 		// 재시도/재생성/편집은 어드바이저를 우회해 수동으로 히스토리를 구성하므로 시스템 프롬프트만 있는 클라이언트가 필요하다
 		this.plainChatClient = this.titleChatClient.mutate()
 				.defaultSystem(DEFAULT_SYSTEM_PROMPT)
+				.defaultTools(dateTimeTools)
 				.build();
 		this.chatClient = this.plainChatClient.mutate()
 				.defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())

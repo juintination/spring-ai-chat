@@ -21,6 +21,7 @@ import com.example.springaichat.chat.memory.PersistentChatMemory;
 import com.example.springaichat.chat.repository.ChatRoomRepository;
 import com.example.springaichat.chat.repository.MessageRepository;
 import com.example.springaichat.chat.service.MessageBranchService.BranchNode;
+import com.example.springaichat.chat.tool.DateTimeTools;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,7 +72,7 @@ class ChatServiceTest {
 
         ChatClient.Builder chatClientBuilder = ChatClient.builder(chatModel);
         chatService = new ChatService(chatClientBuilder, chatMemory, chatRoomRepository, messageRepository,
-                messageBranchService);
+                messageBranchService, new DateTimeTools());
     }
 
     @Test
